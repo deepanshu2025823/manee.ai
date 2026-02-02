@@ -22,7 +22,7 @@
         box-shadow: none !important;
         max-height: 100vh !important;
         max-width: 100vw !important;
-        transition: none !important; /* Animation JS se handle karenge smooth resizing ke liye */
+        transition: all 0.3s ease !important; /* Animation JS se handle karenge smooth resizing ke liye */
       `;
 
       document.body.appendChild(iframe);
