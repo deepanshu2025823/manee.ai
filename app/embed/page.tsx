@@ -1,15 +1,15 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import ReactMarkdown from "react-markdown"; 
-import remarkGfm from "remark-gfm"; 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Message = {
   role: "user" | "bot";
   content: string;
 };
 
-export default function ChatWidget() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const apiKey = searchParams.get("apiKey");
 
@@ -168,7 +168,7 @@ export default function ChatWidget() {
             </button>
           </div>
           <div className="text-center mt-2 flex items-center justify-center gap-1 opacity-50">
-             <span className="text-[9px] font-bold text-gray-600">⚡ Powered By Career Lab Consulting</span>
+             <span className="text-[9px] font-bold text-gray-600">⚡ Powered by Manee AI</span>
           </div>
         </div>
       </div>
@@ -184,5 +184,13 @@ export default function ChatWidget() {
         )}
       </button>
     </div>
+  );
+}
+
+export default function ChatWidget() {
+  return (
+    <Suspense fallback={<div></div>}>
+      <ChatContent />
+    </Suspense>
   );
 }
