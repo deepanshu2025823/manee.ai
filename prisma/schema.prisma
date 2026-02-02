@@ -1,0 +1,46 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  apiKey    String   @unique 
+  website   String?
+  createdAt DateTime @default(now())
+  chats     ChatSession[]
+  contents  WebsiteContent[]
+}
+
+model ChatSession {
+  id        String    @id @default(uuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  createdAt DateTime  @default(now())
+  messages  Message[]
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  chatId    String
+  chat      ChatSession @relation(fields: [chatId], references: [id])
+  role      String      
+  content   String      @db.Text 
+  createdAt DateTime    @default(now())
+}
+
+model WebsiteContent {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  url       String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+}
