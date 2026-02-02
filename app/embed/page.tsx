@@ -20,13 +20,17 @@ function ChatContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    document.documentElement.style.setProperty("background-color", "transparent", "important");
+    document.body.style.setProperty("background-color", "transparent", "important");
+  }, []);
+
+  useEffect(() => {
     if (isOpen) {
       window.parent.postMessage({ type: "MANEE_RESIZE", status: "open" }, "*");
     } else {
       window.parent.postMessage({ type: "MANEE_RESIZE", status: "closed" }, "*");
     }
   }, [isOpen]);
-  // ----------------------------------------
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -70,13 +74,14 @@ function ChatContent() {
   const quickReplies = ["Pricing Check", "Features", "Talk to Sales"];
 
   return (
-    <div className="flex flex-col items-end gap-4 font-sans antialiased h-full justify-end p-4">
+    <div className="flex flex-col items-end justify-end w-full h-full p-2 bg-transparent font-sans antialiased overflow-hidden">
       <div 
         className={`
           transition-all duration-300 ease-in-out transform origin-bottom-right 
           ${isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"}
-          w-full h-full max-w-[360px] max-h-[550px] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col mb-16
+          w-full flex-1 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col mb-4
         `}
+        style={{ maxHeight: 'calc(100% - 70px)' }} 
       >
         <div className="bg-[#EB2328] px-5 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -133,7 +138,7 @@ function ChatContent() {
 
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-4 right-4 w-14 h-14 rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.25)] flex items-center justify-center transition-all duration-300 transform hover:scale-110 ${isOpen ? "bg-white text-gray-600 rotate-90" : "bg-[#EB2328] text-white rotate-0"}`}
+        className={`w-14 h-14 rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.25)] flex items-center justify-center transition-all duration-300 transform hover:scale-110 shrink-0 ${isOpen ? "bg-white text-gray-600 rotate-90" : "bg-[#EB2328] text-white rotate-0"}`}
       >
         {isOpen ? (
            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
