@@ -1,4 +1,12 @@
 (function(window, document) {
+  try {
+    if (window.self !== window.top) {
+      return; 
+    }
+  } catch (e) {
+    return;
+  }
+
   window.ManeeAI = {
     init: function(config) {
       if (!config.apiKey) return;
@@ -22,7 +30,7 @@
         box-shadow: none !important;
         max-height: 100vh !important;
         max-width: 100vw !important;
-        transition: all 0.3s ease !important; /* Animation JS se handle karenge smooth resizing ke liye */
+        transition: none !important;
       `;
 
       document.body.appendChild(iframe);
@@ -43,7 +51,7 @@
              frame.style.cssText += `
                 width: 80px !important;
                 height: 80px !important;
-                border-radius: 100% !important; /* Wapas Gol (Circle) */
+                border-radius: 100% !important;
                 box-shadow: none !important;
              `;
           }
