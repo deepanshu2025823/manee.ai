@@ -30,15 +30,15 @@
         box-shadow: none !important;
         max-height: 100vh !important;
         max-width: 100vw !important;
-        opacity: 0 !important; /* Shuru mein invisible */
-        transition: opacity 0.3s ease, width 0.3s ease, height 0.3s ease, border-radius 0.3s ease !important;
+        opacity: 0 !important; /* Invisible initially */
+        transition: opacity 0.5s ease-in-out, width 0.3s ease, height 0.3s ease, border-radius 0.3s ease !important;
       `;
 
-      iframe.onload = function() {
-          iframe.style.setProperty("opacity", "1", "important");
-      };
-
       document.body.appendChild(iframe);
+
+      setTimeout(function() {
+        iframe.style.setProperty("opacity", "1", "important");
+      }, 100);
 
       window.addEventListener("message", function(event) {
         if (event.data.type === "MANEE_RESIZE") {
