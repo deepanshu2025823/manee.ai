@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,23 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+
+        <Script 
+          src="https://manee-ai.vercel.app/embed.js?v=6.0" 
+          strategy="lazyOnload" 
+        />
+        <Script id="manee-ai-init" strategy="lazyOnload">
+          {`
+            var checkManee = setInterval(function() {
+              if (typeof window.ManeeAI !== 'undefined') {
+                ManeeAI.init({ 
+                  apiKey: "manee-f5cdeea2-5421-4cab-b0d8-c712fe8c0eef" 
+                });
+                clearInterval(checkManee); 
+              }
+            }, 100);
+          `}
+        </Script>
       </body>
     </html>
   );
