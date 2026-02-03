@@ -30,7 +30,8 @@
         box-shadow: none !important;
         max-height: 100vh !important;
         max-width: 100vw !important;
-        transition: none !important;
+        opacity: 0 !important; /* Shuru mein gayab rahega */
+        transition: opacity 0.3s ease, width 0.3s ease, height 0.3s ease, border-radius 0.3s ease !important; /* Smooth entry */
       `;
 
       document.body.appendChild(iframe);
@@ -39,6 +40,8 @@
         if (event.data.type === "MANEE_RESIZE") {
           var frame = document.getElementById("manee-chat-frame");
           if (!frame) return;
+
+          frame.style.setProperty("opacity", "1", "important");
 
           if (event.data.status === "open") {
              frame.style.cssText += `
