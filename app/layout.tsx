@@ -31,7 +31,7 @@ export default function RootLayout({
         {children}
 
         <Script 
-          src="https://manee-ai.vercel.app/embed.js?v=7.0"
+          src="https://manee-ai.vercel.app/embed.js?v=11.0"
           strategy="lazyOnload" 
         />
         
