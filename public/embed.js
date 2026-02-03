@@ -17,6 +17,7 @@
       iframe.src = "https://manee-ai.vercel.app/embed?apiKey=" + config.apiKey;
       
       iframe.setAttribute("scrolling", "no");
+      iframe.setAttribute("allowTransparency", "true"); 
       
       iframe.style.cssText = `
         position: fixed !important;
@@ -26,26 +27,20 @@
         height: 80px !important;
         border: none !important;
         z-index: 2147483647 !important;
-        background: transparent !important;
+        background: transparent !important; /* CSS handle karega */
         box-shadow: none !important;
         max-height: 100vh !important;
         max-width: 100vw !important;
-        opacity: 0 !important; /* Invisible initially */
-        transition: opacity 0.5s ease-in-out, width 0.3s ease, height 0.3s ease, border-radius 0.3s ease !important;
+        display: block !important;
+        transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease !important;
       `;
 
       document.body.appendChild(iframe);
-
-      setTimeout(function() {
-        iframe.style.setProperty("opacity", "1", "important");
-      }, 100);
 
       window.addEventListener("message", function(event) {
         if (event.data.type === "MANEE_RESIZE") {
           var frame = document.getElementById("manee-chat-frame");
           if (!frame) return;
-
-          frame.style.setProperty("opacity", "1", "important");
 
           if (event.data.status === "open") {
              frame.style.cssText += `
