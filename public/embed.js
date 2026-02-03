@@ -1,6 +1,10 @@
 (function(window, document) {
+  console.log("ManeeAI: Script Start"); // ✅ Check 1
+
+  // Recursion Check
   try {
     if (window.self !== window.top) {
+      console.log("ManeeAI: Inside iframe, stopping."); 
       return; 
     }
   } catch (e) {
@@ -9,7 +13,12 @@
 
   window.ManeeAI = {
     init: function(config) {
-      if (!config.apiKey) return;
+      console.log("ManeeAI: Init called with key", config.apiKey); // ✅ Check 2
+
+      if (!config.apiKey) {
+          console.error("ManeeAI: API Key Missing!");
+          return;
+      }
       if (document.getElementById("manee-chat-frame")) return;
 
       var iframe = document.createElement("iframe");
@@ -17,8 +26,9 @@
       iframe.src = "https://manee-ai.vercel.app/embed?apiKey=" + config.apiKey;
       
       iframe.setAttribute("scrolling", "no");
-      iframe.setAttribute("allowTransparency", "true"); 
+      iframe.setAttribute("allowTransparency", "true");
       
+      // 👇 SIMPLE STYLING (No Opacity Tricks)
       iframe.style.cssText = `
         position: fixed !important;
         bottom: 20px !important;
@@ -27,15 +37,15 @@
         height: 80px !important;
         border: none !important;
         z-index: 2147483647 !important;
-        background: transparent !important; /* CSS handle karega */
+        background: transparent !important;
         box-shadow: none !important;
         max-height: 100vh !important;
         max-width: 100vw !important;
-        display: block !important;
-        transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease !important;
+        display: block !important; /* Zabardasti Dikhao */
       `;
 
       document.body.appendChild(iframe);
+      console.log("ManeeAI: Iframe added to body"); // ✅ Check 3
 
       window.addEventListener("message", function(event) {
         if (event.data.type === "MANEE_RESIZE") {
