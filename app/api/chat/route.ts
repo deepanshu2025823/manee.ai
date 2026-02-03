@@ -12,7 +12,7 @@ const genAI = new GoogleGenerativeAI(apiKey || "");
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { message, apiKey: companyApiKey } = body;
+    const { message, file, mimeType, apiKey: companyApiKey } = body; 
 
     const company = await prisma.company.findUnique({
       where: { apiKey: companyApiKey },
@@ -24,28 +24,13 @@ export async function POST(req: Request) {
 
     const contextRecords = await (prisma as any).websiteContent.findMany({
       where: { companyId: company.id },
-      take: 5, 
+      take: 5,
     });
 
-    let systemInstruction = "";
-    
+    let systemInstruction = `You are a helpful AI Support Agent for ${company.name}.`;
     if (contextRecords.length > 0) {
         const contextText = contextRecords.map((r: { content: string }) => r.content).join("\n\n");
-        systemInstruction = `
-          You are a helpful AI Support Agent for ${company.name}.
-          
-          Here is the knowledge base from their website:
-          """
-          ${contextText}
-          """
-          
-          Instructions:
-          1. Answer the user's question based strictly on the knowledge base above.
-          2. If the answer is not in the knowledge base, politely say you don't have that information and suggest contacting support.
-          3. Keep answers concise and professional.
-        `;
-    } else {
-        systemInstruction = `You are a helpful AI Support Agent for ${company.name}. Answer politely.`;
+        systemInstruction += `\n\nHere is the knowledge base:\n"""\n${contextText}\n"""\n\nInstructions:\n1. Answer strictly based on the knowledge base if possible.\n2. If user uploads an image, analyze it in context of the company services.`;
     }
 
     const chatSession = await prisma.chatSession.findFirst({
@@ -54,29 +39,41 @@ export async function POST(req: Request) {
     }) || await prisma.chatSession.create({ data: { companyId: company.id } });
 
     await prisma.message.create({
-      data: { chatId: chatSession.id, role: "user", content: message },
+      data: { 
+          chatId: chatSession.id, 
+          role: "user", 
+          content: message || "[File Uploaded]" 
+      },
     });
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    let promptParts: any[] = [];
     
-    const chat = model.startChat({
-      history: [
-        { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: "Understood. I am ready to help." }] },
-      ],
-    });
+    if (systemInstruction) promptParts.push({ text: "System Context: " + systemInstruction });
+    if (message) promptParts.push({ text: message });
 
-    const result = await chat.sendMessage(message);
+    if (file && mimeType) {
+        const base64Data = file.split(",")[1];
+        promptParts.push({
+            inlineData: {
+                data: base64Data,
+                mimeType: mimeType
+            }
+        });
+    }
+
+    const result = await model.generateContent(promptParts);
     const botResponse = result.response.text();
 
     await prisma.message.create({
       data: { chatId: chatSession.id, role: "bot", content: botResponse },
     });
 
-    return NextResponse.json({ response: botResponse });
+    return NextResponse.json({ response: botResponse, chatId: chatSession.id });
 
   } catch (error: any) {
     console.error("Chat Error:", error);
-    return NextResponse.json({ error: "Service unavailable" }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable or File too large" }, { status: 500 });
   }
 }
