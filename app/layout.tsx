@@ -31,19 +31,24 @@ export default function RootLayout({
         {children}
 
         <Script 
-          src="https://manee-ai.vercel.app/embed.js?v=6.0" 
+          src="https://manee-ai.vercel.app/embed.js?v=7.0"
           strategy="lazyOnload" 
         />
+        
         <Script id="manee-ai-init" strategy="lazyOnload">
           {`
-            var checkManee = setInterval(function() {
-              if (typeof window.ManeeAI !== 'undefined') {
-                ManeeAI.init({ 
-                  apiKey: "manee-f5cdeea2-5421-4cab-b0d8-c712fe8c0eef" 
-                });
-                clearInterval(checkManee); 
-              }
-            }, 100);
+            if (window.self === window.top) {
+              
+              var checkManee = setInterval(function() {
+                if (typeof window.ManeeAI !== 'undefined') {
+                  ManeeAI.init({ 
+                    apiKey: "manee-f5cdeea2-5421-4cab-b0d8-c712fe8c0eef" 
+                  });
+                  clearInterval(checkManee); 
+                }
+              }, 100);
+
+            }
           `}
         </Script>
       </body>
