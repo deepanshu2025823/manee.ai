@@ -1,7 +1,11 @@
+// app/embed/page.tsx
+
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 interface Message {
   id: string;
