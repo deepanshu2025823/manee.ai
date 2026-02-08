@@ -1,277 +1,285 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
-type Message = {
-  role: "user" | "bot";
+interface Message {
+  id: string;
+  role: "bot" | "user";
   content: string;
-  attachment?: string | null;
-  type?: "image" | "text";
-};
+  attachment?: string | null; 
+}
 
-function ChatContent() {
+export default function EmbedPage() {
   const searchParams = useSearchParams();
   const apiKey = searchParams.get("apiKey");
-
+  
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    { id: "1", role: "bot", content: "Hey! Welcome to ManeeAI!" },
+    { id: "2", role: "bot", content: "I can analyze images and documents for you. Try uploading one! 📂 🖼️" },
+    { id: "3", role: "bot", content: "How can I help you today?" }
+  ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- FIX 1: FORCE TRANSPARENCY (CSS Injection) ---
-  // Yeh CSS ensure karega ki Iframe ke piche kabhi bhi White color na aaye
-  const transparencyStyle = `
-    html, body {
-      background-color: transparent !important;
-      background: transparent !important;
-      overflow: hidden !important;
-    }
-  `;
-
-  useEffect(() => {
-    if (isOpen) {
-      window.parent.postMessage({ type: "MANEE_RESIZE", status: "open" }, "*");
-    } else {
-      window.parent.postMessage({ type: "MANEE_RESIZE", status: "closed" }, "*");
-    }
-  }, [isOpen]);
+  const suggestions = [
+    "Analyze this document",
+    "What is in this image?",
+    "Summarize the file"
+  ];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, preview]);
+  }, [messages]);
 
-  // Initial Message
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      if (!apiKey) {
-        setMessages([{ role: "bot", content: "⚠️ Error: API Key missing." }]);
-      } else {
-        setMessages([
-          { role: "bot", content: "👋 Hi there! I'm your AI Assistant.\n\nI can help you with services, pricing, or technical queries. Ask me anything!" }
-        ]);
-      }
+    if (window.parent) {
+      window.parent.postMessage({ 
+        type: "MANEE_RESIZE", 
+        status: isOpen ? "open" : "close" 
+      }, "*");
     }
-  }, [isOpen, apiKey, messages.length]);
+  }, [isOpen]);
 
-  // File Handlers
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { 
+        alert("File size too large! Please upload under 5MB.");
+        return;
+      }
       setSelectedFile(file);
+
       const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
+      reader.onloadend = () => {
+        setFilePreview(reader.result as string);
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
+  const removeFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const sendMessage = async (text: string = input) => {
-    if ((!text.trim() && !selectedFile) || loading) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim() && !selectedFile) return;
 
-    const userMessage = text;
-    const currentFile = selectedFile;
-    const currentPreview = preview;
+    const currentFile = filePreview;
+    const currentFileType = selectedFile?.type;
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: userMessage, attachment: currentPreview, type: currentPreview ? "image" : "text" }
-    ]);
+    const userMsg: Message = { 
+        id: Date.now().toString(), 
+        role: "user", 
+        content: text,
+        attachment: currentFile 
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
-    setSelectedFile(null);
-    setPreview(null);
     setLoading(true);
+    
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     try {
-      let fileData = null;
-      if (currentFile) fileData = await fileToBase64(currentFile);
-
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, file: fileData, mimeType: currentFile?.type, apiKey }),
+        body: JSON.stringify({ 
+            message: text, 
+            apiKey, 
+            file: currentFile, 
+            mimeType: currentFileType
+        }),
       });
+
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "bot", content: data.response }]);
-    } catch (error) {
-      setMessages((prev) => [...prev, { role: "bot", content: "⚠️ Connection Error." }]);
+      if (data.response) {
+        setMessages((prev) => [...prev, { id: Date.now().toString(), role: "bot", content: data.response }]);
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) => [...prev, { id: Date.now().toString(), role: "bot", content: "Sorry, something went wrong." }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const quickReplies = ["Pricing Check", "Features", "Talk to Sales"];
+  if (!isOpen) {
+    return (
+      <div className="flex items-center justify-center h-full w-full">
+        <style>{`
+          body [data-nextjs-toast], body div[data-nextjs-toast], #next-route-announcer + div, nextjs-portal, div[data-nextjs-dialog-overlay] {
+            display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; z-index: -9999 !important;
+          }
+        `}</style>
 
-  return (
-    <>
-      <style>{transparencyStyle}</style>
-      
-      <div className="flex flex-col justify-end items-end w-full h-full p-0 bg-transparent font-sans antialiased overflow-hidden relative">
-        
-        {/* Chat Window */}
-        <div 
-          className={`
-            absolute bottom-[85px] right-[10px] left-[10px] top-[10px]
-            transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) origin-bottom-right 
-            ${isOpen ? "scale-100 opacity-100 translate-y-0" : "scale-90 opacity-0 translate-y-4 pointer-events-none"}
-            bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 overflow-hidden flex flex-col z-50
-          `}
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#EB2328] to-[#FF5C61] px-5 py-4 flex items-center justify-between shrink-0 shadow-sm">
-            <div className="flex items-center gap-3">
-               <div className="w-9 h-9 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/20">
-                  <span className="text-white font-bold text-xl">M</span>
-               </div>
-               <div>
-                  <h1 className="text-white font-bold text-lg leading-none tracking-tight">Support AI</h1>
-                  <span className="text-red-50 text-[11px] font-medium opacity-90 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> Online Now
-                  </span>
-               </div>
-            </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white transition p-1 hover:bg-white/10 rounded-full">
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 bg-[#F8F9FA] scrollbar-thin scrollbar-thumb-gray-200">
-            {messages.map((msg, index) => (
-              <div key={index} className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`flex flex-col max-w-[85%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                  {msg.attachment && (
-                      <img src={msg.attachment} alt="att" className="mb-2 max-w-[150px] rounded-lg border border-gray-200" />
-                  )}
-                  <div className={`p-3.5 text-[14px] leading-relaxed shadow-sm relative ${
-                      msg.role === "user" 
-                      ? "bg-[#EB2328] text-white rounded-2xl rounded-tr-none" 
-                      : "bg-white text-gray-800 border border-gray-200 rounded-2xl rounded-tl-none"
-                    }`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-                         p: ({node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
-                         ul: ({node, ...props}) => <ul className="list-disc pl-4 space-y-1" {...props} />,
-                         a: ({node, ...props}) => <a className="underline font-medium" target="_blank" {...props} />
-                    }}>{msg.content}</ReactMarkdown>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                 <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex gap-1.5">
-                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div><div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-100"></div><div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Footer & Input */}
-          <div className="p-3 bg-white border-t border-gray-100 shrink-0">
-            {preview && (
-                <div className="flex items-center gap-2 mb-2 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs w-fit">
-                    <span className="truncate max-w-[100px] text-gray-600">Image attached</span>
-                    <button onClick={() => {setPreview(null); setSelectedFile(null)}} className="text-red-500 font-bold">✕</button>
-                </div>
-            )}
-            
-            {/* Quick Replies */}
-            {messages.length < 3 && !loading && (
-                <div className="flex gap-2 overflow-x-auto pb-2 mb-1 scrollbar-hide">
-                    {quickReplies.map((reply, i) => (
-                        <button key={i} onClick={() => sendMessage(reply)} className="whitespace-nowrap px-3 py-1.5 bg-gray-50 border border-gray-200 text-gray-600 text-xs font-medium rounded-full hover:bg-[#EB2328] hover:text-white hover:border-[#EB2328] transition">
-                            {reply}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            <div className="relative flex items-end gap-2">
-                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
-                <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 hover:text-[#EB2328] transition bg-gray-50 rounded-full h-10 w-10 flex items-center justify-center">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                </button>
-                
-                <div className="flex-1 relative">
-                    <input 
-                        type="text" 
-                        className="w-full bg-gray-50 text-gray-800 placeholder-gray-400 border border-transparent focus:bg-white focus:border-gray-300 rounded-full pl-4 pr-10 py-2.5 text-sm outline-none transition-all"
-                        placeholder="Type a message..."
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                    />
-                    <button onClick={() => sendMessage()} disabled={!input.trim() && !selectedFile} className="absolute right-1 top-1 p-1.5 bg-[#EB2328] text-white rounded-full hover:bg-red-700 transition disabled:opacity-50 disabled:bg-gray-300">
-                        <svg className="w-4 h-4 translate-x-px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                    </button>
-                </div>
-            </div>
-            <div className="text-center mt-2 opacity-40 hover:opacity-100 transition">
-                <a href="https://manee.ai" target="_blank" className="text-[9px] font-semibold text-gray-500 flex items-center justify-center gap-1">
-                    ⚡ Powered by Manee AI
-                </a>
-            </div>
-          </div>
-        </div>
-
-        {/* --- NEW ICON & LAUNCHER BUTTON --- */}
         <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className={`
-            absolute bottom-[10px] right-[10px] w-16 h-16 rounded-full 
-            shadow-[0_4px_20px_rgba(235,35,40,0.4)] 
-            flex items-center justify-center 
-            transition-all duration-300 transform hover:scale-105 active:scale-95
-            bg-gradient-to-br from-[#EB2328] to-[#FF5C61] border-2 border-white
-            ${isOpen ? "rotate-90 scale-90 opacity-0 pointer-events-none" : "rotate-0 opacity-100"}
-          `}
+          onClick={() => setIsOpen(true)}
+          className="cursor-pointer w-14 h-14 bg-[#d1202e] rounded-full shadow-xl flex items-center justify-center text-white hover:scale-110 transition-transform active:scale-95"
         >
-           {/* Modern Chat Icon */}
-           <svg className="w-8 h-8 text-white drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24">
-               <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" className="hidden" /> {/* Fallback */}
-               <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12C2 13.846 2.496 15.557 3.367 17.027L2.095 20.835C1.862 21.533 2.467 22.138 3.165 21.905L6.973 20.633C8.443 21.504 10.154 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM11 7C10.448 7 10 7.448 10 8C10 8.552 10.448 9 11 9H13C13.552 9 14 8.552 14 8C14 7.448 13.552 7 13 7H11ZM11 11C10.448 11 10 11.448 10 12C10 12.552 10.448 13 11 13H13C13.552 13 14 12.552 14 12C14 11.448 13.552 11 13 11H11ZM10 16C10 15.448 10.448 15 11 15H15C15.552 15 16 15.448 16 16C16 16.552 15.552 17 15 17H11C10.448 17 10 16.552 10 16Z"/>
-           </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-7 h-7">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.159 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+          </svg>
         </button>
-
-        {/* Close Icon (Only visible when Open) */}
-        <button 
-          onClick={() => setIsOpen(false)}
-          className={`
-            absolute bottom-[10px] right-[10px] w-14 h-14 rounded-full 
-            shadow-lg bg-white text-gray-500 border border-gray-100
-            flex items-center justify-center 
-            transition-all duration-300 transform
-            ${isOpen ? "rotate-0 opacity-100 scale-100" : "-rotate-90 opacity-0 scale-50 pointer-events-none"}
-          `}
-        >
-           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-
       </div>
-    </>
-  );
-}
+    );
+  }
 
-export default function ChatWidget() {
   return (
-    <Suspense fallback={<div></div>}>
-      <ChatContent />
-    </Suspense>
+    <div className="flex flex-col h-[calc(100vh-20px)] w-full max-w-[400px] mx-auto bg-white font-sans shadow-2xl rounded-xl overflow-hidden border border-gray-200">
+      <style>{`
+          body [data-nextjs-toast], body div[data-nextjs-toast], #next-route-announcer + div, nextjs-portal, div[data-nextjs-dialog-overlay] {
+            display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; z-index: -9999 !important;
+          }
+      `}</style>
+
+      <div className="bg-[#b91c1c] px-4 py-3 text-white flex justify-between items-center shrink-0">
+        <div className="flex items-center gap-2">
+           <div className="bg-white/20 p-1 rounded">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+             </svg>
+           </div>
+           <span className="font-bold text-sm tracking-wide">We are online!</span>
+        </div>
+        <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white cursor-pointer hover:bg-white/10 rounded-full p-1 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0 shadow-sm z-10">
+         <div className="w-8 h-8 bg-[#d1202e] rounded flex items-center justify-center text-white font-bold text-xs">
+            M
+         </div>
+         <span className="font-bold text-gray-800 text-lg">ManeeAI</span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+            
+            {msg.attachment && (
+                <div className="mb-1 max-w-[85%]">
+                    {msg.attachment.startsWith("data:image") ? (
+                         <img src={msg.attachment} alt="Upload" className="rounded-lg max-h-32 border border-gray-200" />
+                    ) : (
+                        <div className="bg-gray-100 p-2 rounded text-xs flex items-center gap-1 border border-gray-300">
+                             📄 Document Uploaded
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <div 
+              className={`max-w-[85%] px-4 py-2.5 text-[15px] leading-relaxed shadow-sm ${
+                msg.role === "user" 
+                  ? "bg-[#d1202e] text-white rounded-2xl rounded-tr-none" 
+                  : "bg-[#f0f2f5] text-gray-800 rounded-2xl rounded-tl-none border border-gray-100"
+              }`}
+            >
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-[#f0f2f5] px-4 py-3 rounded-2xl rounded-tl-none border border-gray-100 flex items-center gap-1.5 w-16">
+               <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+               <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]"></span>
+               <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]"></span>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="bg-white border-t border-gray-100 p-3 shrink-0">
+        
+        {selectedFile && (
+            <div className="flex items-center gap-2 mb-2 bg-gray-50 p-2 rounded-lg border border-gray-200 w-fit">
+                <div className="text-xs text-gray-600 truncate max-w-[200px] flex items-center gap-1">
+                    {selectedFile.type.startsWith("image") ? "🖼️" : "📄"} {selectedFile.name}
+                </div>
+                <button onClick={removeFile} className="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
+            </div>
+        )}
+
+        {messages.length < 5 && !loading && !selectedFile && (
+          <div className="flex flex-col gap-2 mb-3">
+            {suggestions.map((suggestion, idx) => (
+              <button
+                key={idx}
+                onClick={() => sendMessage(suggestion)}
+                className="cursor-pointer text-left text-sm font-medium text-[#1f2937] bg-white border border-[#007a5a] hover:bg-[#eff9f6] px-4 py-2 rounded-full transition-colors shadow-sm"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <form 
+          onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+          className="flex items-center gap-2 relative bg-gray-100 rounded-full pr-2"
+        >
+          <input 
+             type="file" 
+             ref={fileInputRef} 
+             onChange={handleFileChange} 
+             className="hidden" 
+             accept="image/*,application/pdf,text/plain"
+          />
+
+          <button 
+             type="button"
+             onClick={() => fileInputRef.current?.click()}
+             className="p-3 text-gray-500 hover:text-[#d1202e] transition-colors rounded-full cursor-pointer"
+             title="Attach Image or Document"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+             </svg>
+          </button>
+
+          <input
+            className="flex-1 py-3 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-500"
+            placeholder="Type a message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+
+          <button 
+            type="submit" 
+            disabled={loading || (!input.trim() && !selectedFile)}
+            className="p-2 bg-[#d1202e] text-white rounded-full hover:bg-[#b91c1c] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
+            </svg>
+          </button>
+        </form>
+        
+        <div className="text-center mt-2">
+            <span className="text-[10px] text-gray-400">Powered By Career Lab Consulting</span>
+        </div>
+      </div>
+
+    </div>
   );
 }

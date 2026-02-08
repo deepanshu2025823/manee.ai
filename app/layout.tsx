@@ -1,3 +1,5 @@
+// app/layout.tsx
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -31,7 +33,7 @@ export default function RootLayout({
         {children}
 
         <Script 
-          src="https://manee-ai.vercel.app/embed.js?v=100.0" 
+          src="http://localhost:3000/embed.js" 
           strategy="lazyOnload" 
         />
         
@@ -42,7 +44,7 @@ export default function RootLayout({
               var checkManee = setInterval(function() {
                 if (typeof window.ManeeAI !== 'undefined') {
                   ManeeAI.init({ 
-                    apiKey: "manee-f5cdeea2-5421-4cab-b0d8-c712fe8c0eef" 
+                    apiKey: "manee-667cc928-c3a9-41fa-9842-cc439a794ae8" 
                   });
                   clearInterval(checkManee); 
                 }

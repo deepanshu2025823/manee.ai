@@ -82,9 +82,8 @@ export default function Settings() {
              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">AI Model</label>
                 <select className="w-full p-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                   <option>Gemini 2.5 Flash (Active)</option>
-                   <option>Gemini 2.0 Pro</option>
-                   <option>GPT-4o (Coming Soon)</option>
+                   <option>Manee 2.5 Flash (Active)</option>
+                   <option>Manee 2.0 Pro</option>
                 </select>
              </div>
           </div>

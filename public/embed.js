@@ -1,7 +1,8 @@
-(function(window, document) {
-  console.log("ManeeAI: Script Start"); // ✅ Check 1
+// public/embed.js
 
-  // Recursion Check
+(function(window, document) {
+  console.log("ManeeAI: Script Start"); 
+
   try {
     if (window.self !== window.top) {
       console.log("ManeeAI: Inside iframe, stopping."); 
@@ -11,9 +12,10 @@
     return;
   }
 
-  window.ManeeAI = {
-    init: function(config) {
-      console.log("ManeeAI: Init called with key", config.apiKey); // ✅ Check 2
+  var ManeeAI = window.ManeeAI || {};
+
+  ManeeAI.init = function(config) {
+      console.log("ManeeAI: Init called with key", config.apiKey); 
 
       if (!config.apiKey) {
           console.error("ManeeAI: API Key Missing!");
@@ -23,12 +25,15 @@
 
       var iframe = document.createElement("iframe");
       iframe.id = "manee-chat-frame";
-      iframe.src = "https://manee-ai.vercel.app/embed?apiKey=" + config.apiKey;
+      
+      var domain = "http://localhost:3000"; 
+      
+      iframe.src = domain + "/embed?apiKey=" + config.apiKey;
       
       iframe.setAttribute("scrolling", "no");
       iframe.setAttribute("allowTransparency", "true");
+      iframe.setAttribute("allow", "clipboard-read; clipboard-write"); 
       
-      // 👇 SIMPLE STYLING (No Opacity Tricks)
       iframe.style.cssText = `
         position: fixed !important;
         bottom: 20px !important;
@@ -41,11 +46,12 @@
         box-shadow: none !important;
         max-height: 100vh !important;
         max-width: 100vw !important;
-        display: block !important; /* Zabardasti Dikhao */
+        display: block !important;
+        transition: none !important;
       `;
 
       document.body.appendChild(iframe);
-      console.log("ManeeAI: Iframe added to body"); // ✅ Check 3
+      console.log("ManeeAI: Iframe added to body"); 
 
       window.addEventListener("message", function(event) {
         if (event.data.type === "MANEE_RESIZE") {
@@ -69,6 +75,8 @@
           }
         }
       });
-    }
   };
+
+  window.ManeeAI = ManeeAI;
+
 })(window, document);

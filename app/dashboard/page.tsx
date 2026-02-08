@@ -112,7 +112,7 @@ export default function Dashboard() {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                </div>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">Gemini 2.5</h3>
+            <h3 className="text-3xl font-bold text-gray-900 mb-1">Manee 2.5</h3>
             <p className="text-sm text-gray-500 font-medium">Active AI Model</p>
           </div>
         </div>
