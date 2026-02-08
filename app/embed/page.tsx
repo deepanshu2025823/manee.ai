@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface Message {
@@ -10,7 +10,7 @@ interface Message {
   attachment?: string | null; 
 }
 
-export default function EmbedPage() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const apiKey = searchParams.get("apiKey");
   
@@ -281,5 +281,13 @@ export default function EmbedPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function EmbedPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }
